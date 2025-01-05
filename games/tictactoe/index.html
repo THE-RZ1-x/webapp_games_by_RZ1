@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe - RZ1 Arcade</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tic-Tac-Toe</h1>
+        </header>
+
+        <!-- Game Mode Selection Screen -->
+        <div class="mode-selection" id="mode-selection">
+            <h2>Select Game Mode</h2>
+            <button class="mode-button" data-mode="2player">2 Players</button>
+            <button class="mode-button" data-mode="ai">vs Computer</button>
+        </div>
+
+        <!-- AI Difficulty Selection Screen -->
+        <div class="difficulty-selection hidden" id="difficulty-selection">
+            <h2>Select Difficulty</h2>
+            <button class="difficulty-button" data-difficulty="easy">Easy</button>
+            <button class="difficulty-button" data-difficulty="medium">Medium</button>
+            <button class="difficulty-button" data-difficulty="hard">Hard</button>
+            <button class="back-button" id="back-to-mode">Back</button>
+        </div>
+
+        <!-- Game Board Screen -->
+        <div class="game-screen hidden" id="game-screen">
+            <div class="game-info">
+                <p id="player-turn">Player X's Turn</p>
+                <div class="game-controls">
+                    <button id="reset-button">Reset Game</button>
+                    <button id="change-mode">Change Mode</button>
+                </div>
+            </div>
+
+            <div class="game-board">
+                <div class="cell" data-cell></div>
+                <div class="cell" data-cell></div>
+                <div class="cell" data-cell></div>
+                <div class="cell" data-cell></div>
+                <div class="cell" data-cell></div>
+                <div class="cell" data-cell></div>
+                <div class="cell" data-cell></div>
+                <div class="cell" data-cell></div>
+                <div class="cell" data-cell></div>
+            </div>
+        </div>
+
+        <a href="../../index.html" class="menu-button">Back to Menu</a>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Invaders - RZ1 ARCADE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(135deg, #1e0030 0%, #180051 50%, #000428 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+        }
+        canvas {
+            border: 2px solid #00fff2;
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0, 255, 242, 0.3);
+        }
+        .score {
+            margin: 20px 0;
+            font-size: 24px;
+            text-shadow: 0 0 10px #00fff2;
+        }
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="score">Score: <span id="score">0</span></div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="controls">
+        ← → : Move<br>
+        SPACE : Shoot<br>
+        P : Pause
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+
+        // Set canvas size
+        canvas.width = 800;
+        canvas.height = 600;
+
+        // Game objects
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - 30,
+            width: 50,
+            height: 30,
+            speed: 5,
+            color: '#00fff2'
+        };
+
+        const bullet = {
+            width: 3,
+            height: 15,
+            speed: 7,
+            color: '#ff00ff'
+        };
+
+        const enemy = {
+            width: 40,
+            height: 30,
+            rows: 5,
+            cols: 10,
+            spacing: 15,
+            speed: 1,
+            dropDistance: 30,
+            color: '#ff0000'
+        };
+
+        let bullets = [];
+        let enemies = [];
+        let score = 0;
+        let gameOver = false;
+        let paused = false;
+        let moveRight = true;
+
+        // Create enemies
+        function createEnemies() {
+            for (let row = 0; row < enemy.rows; row++) {
+                for (let col = 0; col < enemy.cols; col++) {
+                    enemies.push({
+                        x: col * (enemy.width + enemy.spacing) + 50,
+                        y: row * (enemy.height + enemy.spacing) + 50,
+                        width: enemy.width,
+                        height: enemy.height
+                    });
+                }
+            }
+        }
+
+        // Draw functions
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x - player.width/2, player.y, player.width, player.height);
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = bullet.color;
+            bullets.forEach(b => {
+                ctx.fillRect(b.x - bullet.width/2, b.y, bullet.width, bullet.height);
+            });
+        }
+
+        function drawEnemies() {
+            ctx.fillStyle = enemy.color;
+            enemies.forEach(e => {
+                ctx.fillRect(e.x, e.y, e.width, e.height);
+            });
+        }
+
+        // Game logic
+        function moveEnemies() {
+            let touchedEdge = false;
+            
+            enemies.forEach(e => {
+                if (moveRight) {
+                    e.x += enemy.speed;
+                    if (e.x + enemy.width > canvas.width - 20) touchedEdge = true;
+                } else {
+                    e.x -= enemy.speed;
+                    if (e.x < 20) touchedEdge = true;
+                }
+            });
+
+            if (touchedEdge) {
+                moveRight = !moveRight;
+                enemies.forEach(e => {
+                    e.y += enemy.dropDistance;
+                });
+            }
+        }
+
+        function checkCollisions() {
+            // Bullet-Enemy collisions
+            bullets = bullets.filter(b => {
+                let hitEnemy = false;
+                enemies = enemies.filter(e => {
+                    if (b.x >= e.x && b.x <= e.x + e.width &&
+                        b.y >= e.y && b.y <= e.y + e.height) {
+                        hitEnemy = true;
+                        score += 10;
+                        scoreElement.textContent = score;
+                        return false;
+                    }
+                    return true;
+                });
+                return !hitEnemy;
+            });
+
+            // Enemy-Player collisions
+            enemies.forEach(e => {
+                if (e.y + e.height >= player.y) {
+                    gameOver = true;
+                }
+            });
+        }
+
+        // Game loop
+        function update() {
+            if (!gameOver && !paused) {
+                // Move bullets
+                bullets.forEach(b => b.y -= bullet.speed);
+                bullets = bullets.filter(b => b.y > 0);
+
+                // Move enemies
+                moveEnemies();
+
+                // Check collisions
+                checkCollisions();
+
+                // Check win condition
+                if (enemies.length === 0) {
+                    enemy.speed += 0.5;
+                    createEnemies();
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameOver) {
+                ctx.fillStyle = '#fff';
+                ctx.font = '40px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2);
+                ctx.font = '20px "Press Start 2P"';
+                ctx.fillText(`Final Score: ${score}`, canvas.width/2, canvas.height/2 + 40);
+                return;
+            }
+
+            if (paused) {
+                ctx.fillStyle = '#fff';
+                ctx.font = '40px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillText('PAUSED', canvas.width/2, canvas.height/2);
+                return;
+            }
+
+            drawPlayer();
+            drawBullets();
+            drawEnemies();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Controls
+        let leftPressed = false;
+        let rightPressed = false;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') leftPressed = true;
+            if (e.key === 'ArrowRight') rightPressed = true;
+            if (e.key === ' ' && !paused && !gameOver) {
+                bullets.push({
+                    x: player.x,
+                    y: player.y
+                });
+            }
+            if (e.key === 'p' || e.key === 'P') paused = !paused;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') leftPressed = false;
+            if (e.key === 'ArrowRight') rightPressed = false;
+        });
+
+        // Movement update
+        setInterval(() => {
+            if (!gameOver && !paused) {
+                if (leftPressed && player.x > player.width/2) {
+                    player.x -= player.speed;
+                }
+                if (rightPressed && player.x < canvas.width - player.width/2) {
+                    player.x += player.speed;
+                }
+            }
+        }, 1000/60);
+
+        // Start game
+        createEnemies();
+        gameLoop();
+    </script>
+</body>
+</html>

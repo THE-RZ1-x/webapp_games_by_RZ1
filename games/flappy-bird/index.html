@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird - RZ1 ARCADE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(135deg, #1e0030 0%, #180051 50%, #000428 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+        }
+        canvas {
+            border: 2px solid #00fff2;
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0, 255, 242, 0.3);
+        }
+        .score {
+            margin: 20px 0;
+            font-size: 24px;
+            text-shadow: 0 0 10px #00fff2;
+        }
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="score">Score: <span id="score">0</span></div>
+    <canvas id="gameCanvas"></canvas>
+    <div class="controls">
+        SPACE or CLICK to Jump<br>
+        P : Pause
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+
+        // Canvas setup
+        canvas.width = 400;
+        canvas.height = 600;
+
+        // Game variables
+        const bird = {
+            x: 50,
+            y: canvas.height / 2,
+            radius: 20,
+            velocity: 0,
+            gravity: 0.5,
+            jumpForce: -10,
+            color: '#ffff00'
+        };
+
+        const pipe = {
+            width: 60,
+            gap: 150,
+            minHeight: 50,
+            speed: 3
+        };
+
+        let pipes = [];
+        let score = 0;
+        let gameOver = false;
+        let gameStarted = false;
+        let paused = false;
+
+        // Create initial pipes
+        function createPipe() {
+            const minGap = pipe.minHeight;
+            const maxGap = canvas.height - pipe.gap - pipe.minHeight;
+            const topHeight = Math.random() * (maxGap - minGap) + minGap;
+            
+            pipes.push({
+                x: canvas.width,
+                topHeight: topHeight,
+                bottomHeight: canvas.height - topHeight - pipe.gap,
+                passed: false
+            });
+        }
+
+        // Draw functions
+        function drawBird() {
+            ctx.beginPath();
+            ctx.arc(bird.x, bird.y, bird.radius, 0, Math.PI * 2);
+            ctx.fillStyle = bird.color;
+            ctx.fill();
+            ctx.closePath();
+
+            // Add eye
+            ctx.beginPath();
+            ctx.arc(bird.x + 8, bird.y - 5, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function drawPipes() {
+            pipes.forEach(p => {
+                // Top pipe
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(p.x, 0, pipe.width, p.topHeight);
+                
+                // Bottom pipe
+                ctx.fillRect(p.x, canvas.height - p.bottomHeight, pipe.width, p.bottomHeight);
+
+                // Pipe borders
+                ctx.strokeStyle = '#008800';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(p.x, 0, pipe.width, p.topHeight);
+                ctx.strokeRect(p.x, canvas.height - p.bottomHeight, pipe.width, p.bottomHeight);
+            });
+        }
+
+        function drawBackground() {
+            // Draw stars
+            ctx.fillStyle = '#ffffff';
+            for(let i = 0; i < 50; i++) {
+                ctx.beginPath();
+                ctx.arc(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    Math.random() * 2,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+        }
+
+        // Game logic
+        function update() {
+            if (!gameStarted || gameOver || paused) return;
+
+            // Update bird
+            bird.velocity += bird.gravity;
+            bird.y += bird.velocity;
+
+            // Create new pipes
+            if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 250) {
+                createPipe();
+            }
+
+            // Update pipes
+            pipes.forEach(p => {
+                p.x -= pipe.speed;
+
+                // Check for score
+                if (!p.passed && p.x + pipe.width < bird.x) {
+                    p.passed = true;
+                    score++;
+                    scoreElement.textContent = score;
+                }
+            });
+
+            // Remove off-screen pipes
+            pipes = pipes.filter(p => p.x + pipe.width > 0);
+
+            // Check collisions
+            if (bird.y < 0 || bird.y > canvas.height) {
+                gameOver = true;
+            }
+
+            pipes.forEach(p => {
+                if (bird.x + bird.radius > p.x && 
+                    bird.x - bird.radius < p.x + pipe.width) {
+                    if (bird.y - bird.radius < p.topHeight || 
+                        bird.y + bird.radius > canvas.height - p.bottomHeight) {
+                        gameOver = true;
+                    }
+                }
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            drawPipes();
+            drawBird();
+
+            if (!gameStarted) {
+                ctx.fillStyle = '#fff';
+                ctx.font = '20px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillText('CLICK TO START', canvas.width/2, canvas.height/2);
+            }
+
+            if (gameOver) {
+                ctx.fillStyle = '#fff';
+                ctx.font = '30px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2);
+                ctx.font = '20px "Press Start 2P"';
+                ctx.fillText(`Score: ${score}`, canvas.width/2, canvas.height/2 + 40);
+            }
+
+            if (paused) {
+                ctx.fillStyle = '#fff';
+                ctx.font = '30px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.fillText('PAUSED', canvas.width/2, canvas.height/2);
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Controls
+        function jump() {
+            if (gameOver) {
+                // Reset game
+                bird.y = canvas.height / 2;
+                bird.velocity = 0;
+                pipes = [];
+                score = 0;
+                scoreElement.textContent = '0';
+                gameOver = false;
+                gameStarted = false;
+            } else if (!gameStarted) {
+                gameStarted = true;
+            } else if (!paused) {
+                bird.velocity = bird.jumpForce;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                jump();
+            }
+            if (e.key === 'p' || e.key === 'P') {
+                paused = !paused;
+            }
+        });
+
+        canvas.addEventListener('click', jump);
+
+        // Start game
+        gameLoop();
+    </script>
+</body>
+</html>

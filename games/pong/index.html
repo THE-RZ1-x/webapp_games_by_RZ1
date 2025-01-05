@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong - RZ1 Arcade</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <div class="score">
+                <div id="player1Score">0</div>
+                <div id="player2Score">0</div>
+            </div>
+            <div id="winMessage" class="win-message"></div>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="controls">
+            <div class="controls-info">
+                <div class="player-controls">
+                    <h3>Player 1</h3>
+                    <p>W: Up</p>
+                    <p>S: Down</p>
+                </div>
+                <div class="player-controls">
+                    <h3>Player 2</h3>
+                    <p>↑: Up</p>
+                    <p>↓: Down</p>
+                </div>
+            </div>
+            <button id="startButton">Start Game</button>
+            <button id="resetButton">Reset Game</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

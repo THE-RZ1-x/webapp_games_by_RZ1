@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Match - RZ1 Arcade</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <div class="stats">
+                <div class="moves">Moves: <span id="moveCount">0</span></div>
+                <div class="time">Time: <span id="timeCount">0:00</span></div>
+                <div class="score">Score: <span id="scoreCount">0</span></div>
+            </div>
+            <div class="controls">
+                <button id="startButton">New Game</button>
+                <select id="difficultySelect">
+                    <option value="easy">Easy (4x4)</option>
+                    <option value="medium">Medium (6x6)</option>
+                    <option value="hard">Hard (8x8)</option>
+                </select>
+            </div>
+        </div>
+        <div id="gameBoard" class="game-board"></div>
+        <div id="levelUpNotification" class="level-up">Level Up!</div>
+        <div id="gameOverScreen" class="game-over">
+            <h2>Game Over!</h2>
+            <div class="final-stats">
+                <p>Moves: <span id="finalMoves">0</span></p>
+                <p>Time: <span id="finalTime">0:00</span></p>
+                <p>Score: <span id="finalScore">0</span></p>
+            </div>
+            <button id="playAgainButton">Play Again</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

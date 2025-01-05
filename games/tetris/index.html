@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris - RZ1 ARCADE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(135deg, #1e0030 0%, #180051 50%, #000428 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+        }
+        .game-container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+        canvas {
+            border: 2px solid #00fff2;
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0, 255, 242, 0.3);
+        }
+        .info-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .next-piece {
+            border: 2px solid #ff00ff;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .score, .level, .lines {
+            font-size: 18px;
+            text-shadow: 0 0 10px #00fff2;
+        }
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div class="info-panel">
+            <div class="next-piece">
+                <div>NEXT</div>
+                <canvas id="nextCanvas"></canvas>
+            </div>
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="level">Level: <span id="level">1</span></div>
+            <div class="lines">Lines: <span id="lines">0</span></div>
+        </div>
+    </div>
+    <div class="controls">
+        ← → : Move<br>
+        ↑ : Rotate<br>
+        ↓ : Soft Drop<br>
+        SPACE : Hard Drop<br>
+        P : Pause
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const nextCanvas = document.getElementById('nextCanvas');
+        const ctx = canvas.getContext('2d');
+        const nextCtx = nextCanvas.getContext('2d');
+
+        // Game constants
+        const BLOCK_SIZE = 30;
+        const ROWS = 20;
+        const COLS = 10;
+        const NEXT_SIZE = 4;
+
+        // Set canvas sizes
+        canvas.width = COLS * BLOCK_SIZE;
+        canvas.height = ROWS * BLOCK_SIZE;
+        nextCanvas.width = NEXT_SIZE * BLOCK_SIZE;
+        nextCanvas.height = NEXT_SIZE * BLOCK_SIZE;
+
+        // Tetromino shapes and colors
+        const SHAPES = {
+            I: [[1, 1, 1, 1]],
+            J: [[1, 0, 0], [1, 1, 1]],
+            L: [[0, 0, 1], [1, 1, 1]],
+            O: [[1, 1], [1, 1]],
+            S: [[0, 1, 1], [1, 1, 0]],
+            T: [[0, 1, 0], [1, 1, 1]],
+            Z: [[1, 1, 0], [0, 1, 1]]
+        };
+
+        const COLORS = {
+            I: '#00f0f0',
+            J: '#0000f0',
+            L: '#f0a000',
+            O: '#f0f000',
+            S: '#00f000',
+            T: '#a000f0',
+            Z: '#f00000'
+        };
+
+        let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        let score = 0;
+        let level = 1;
+        let lines = 0;
+        let gameOver = false;
+        let paused = false;
+
+        class Piece {
+            constructor(shape = null) {
+                this.shape = shape || Object.keys(SHAPES)[Math.floor(Math.random() * 7)];
+                this.matrix = SHAPES[this.shape];
+                this.color = COLORS[this.shape];
+                this.x = Math.floor((COLS - this.matrix[0].length) / 2);
+                this.y = 0;
+            }
+
+            rotate() {
+                const rotated = this.matrix[0].map((_, i) =>
+                    this.matrix.map(row => row[i]).reverse()
+                );
+                if (!this.collision(0, 0, rotated)) {
+                    this.matrix = rotated;
+                }
+            }
+
+            collision(dx, dy, matrix = this.matrix) {
+                for (let y = 0; y < matrix.length; y++) {
+                    for (let x = 0; x < matrix[y].length; x++) {
+                        if (matrix[y][x] && (
+                            board[y + this.y + dy] === undefined ||
+                            board[y + this.y + dy][x + this.x + dx] === undefined ||
+                            board[y + this.y + dy][x + this.x + dx]
+                        )) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+
+            merge() {
+                this.matrix.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value) {
+                            board[y + this.y][x + this.x] = this.color;
+                        }
+                    });
+                });
+            }
+
+            move(dx, dy) {
+                if (!this.collision(dx, dy)) {
+                    this.x += dx;
+                    this.y += dy;
+                    return true;
+                }
+                return false;
+            }
+
+            hardDrop() {
+                while (this.move(0, 1)) {}
+                this.merge();
+                return true;
+            }
+        }
+
+        let currentPiece = new Piece();
+        let nextPiece = new Piece();
+
+        function clearLines() {
+            let linesCleared = 0;
+            outer: for (let y = board.length - 1; y >= 0; y--) {
+                for (let x = 0; x < board[y].length; x++) {
+                    if (!board[y][x]) continue outer;
+                }
+                board.splice(y, 1);
+                board.unshift(Array(COLS).fill(0));
+                linesCleared++;
+            }
+            if (linesCleared > 0) {
+                lines += linesCleared;
+                score += [40, 100, 300, 1200][linesCleared - 1] * level;
+                level = Math.floor(lines / 10) + 1;
+                document.getElementById('score').textContent = score;
+                document.getElementById('level').textContent = level;
+                document.getElementById('lines').textContent = lines;
+            }
+        }
+
+        function drawBlock(ctx, x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            ctx.strokeStyle = '#fff';
+            ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        }
+
+        function drawPiece(ctx, piece, offsetX = 0, offsetY = 0) {
+            piece.matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        drawBlock(
+                            ctx,
+                            x + piece.x + offsetX,
+                            y + piece.y + offsetY,
+                            piece.color
+                        );
+                    }
+                });
+            });
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            board.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        drawBlock(ctx, x, y, value);
+                    }
+                });
+            });
+            drawPiece(ctx, currentPiece);
+        }
+
+        function drawNext() {
+            nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+            const matrix = SHAPES[nextPiece.shape];
+            const offsetX = (NEXT_SIZE - matrix[0].length) / 2;
+            const offsetY = (NEXT_SIZE - matrix.length) / 2;
+            matrix.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        drawBlock(
+                            nextCtx,
+                            x + offsetX,
+                            y + offsetY,
+                            COLORS[nextPiece.shape]
+                        );
+                    }
+                });
+            });
+        }
+
+        let dropCounter = 0;
+        let lastTime = 0;
+
+        function update(time = 0) {
+            if (gameOver || paused) {
+                if (gameOver) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '20px "Press Start 2P"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2);
+                }
+                requestAnimationFrame(update);
+                return;
+            }
+
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            dropCounter += deltaTime;
+            if (dropCounter > 1000 - (level * 50)) {
+                if (!currentPiece.move(0, 1)) {
+                    currentPiece.merge();
+                    clearLines();
+                    currentPiece = nextPiece;
+                    nextPiece = new Piece();
+                    drawNext();
+                    if (currentPiece.collision(0, 0)) {
+                        gameOver = true;
+                    }
+                }
+                dropCounter = 0;
+            }
+
+            drawBoard();
+            requestAnimationFrame(update);
+        }
+
+        document.addEventListener('keydown', event => {
+            if (gameOver) return;
+
+            if (event.key === 'p' || event.key === 'P') {
+                paused = !paused;
+                return;
+            }
+
+            if (paused) return;
+
+            switch (event.key) {
+                case 'ArrowLeft':
+                    currentPiece.move(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    currentPiece.move(1, 0);
+                    break;
+                case 'ArrowDown':
+                    if (!currentPiece.move(0, 1)) {
+                        currentPiece.merge();
+                        clearLines();
+                        currentPiece = nextPiece;
+                        nextPiece = new Piece();
+                        drawNext();
+                        if (currentPiece.collision(0, 0)) {
+                            gameOver = true;
+                        }
+                    }
+                    break;
+                case 'ArrowUp':
+                    currentPiece.rotate();
+                    break;
+                case ' ':
+                    if (currentPiece.hardDrop()) {
+                        clearLines();
+                        currentPiece = nextPiece;
+                        nextPiece = new Piece();
+                        drawNext();
+                        if (currentPiece.collision(0, 0)) {
+                            gameOver = true;
+                        }
+                    }
+                    break;
+            }
+        });
+
+        drawNext();
+        update();
+    </script>
+</body>
+</html>
